@@ -1,6 +1,6 @@
 import streamlit as st
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # --- 1. CONFIG ---
 st.set_page_config(
@@ -112,7 +112,12 @@ if data:
         bg_color = "#EF4444" # Red
         msg = "BAHAYA"
 
-    # --- A. STATUS BANNER (RESPONSIF) ---
+    # --- A. STATUS BANNER (RESPONSIF & WIB) ---
+    
+    # HITUNG WAKTU WIB (UTC + 7 Jam)
+    wib_now = datetime.utcnow() + timedelta(hours=7)
+    jam_wib = wib_now.strftime('%H:%M') + " WIB"
+
     st.markdown(f"""
     <div class="status-box" style="background-color: {bg_color};">
         <div style="text-align: left;">
@@ -121,7 +126,7 @@ if data:
             <div class="sub-stat">{msg}</div>
         </div>
         <div style="text-align: right;">
-            <div class="big-stat">{datetime.now().strftime('%H:%M')}</div>
+            <div class="big-stat">{jam_wib}</div>
             <div class="meta-text">Live Monitoring • {tanggal}</div>
         </div>
     </div>
