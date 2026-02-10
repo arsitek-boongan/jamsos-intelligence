@@ -1,0 +1,37 @@
+name: Legal Document Processor
+
+on:
+  push:
+    paths:
+      - 'data-regulasi/**.pdf' # Trigger hanya jika ada PDF baru
+
+jobs:
+  process-regulations:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Izin untuk update index.json & file .txt
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        pip install -r .github/scripts/requirements.txt
+
+    - name: Run Legal Processor Script
+      run: python .github/scripts/legal_processor.py
+
+    - name: Commit and Push changes
+      run: |
+        git config --global user.name "LegalBot"
+        git config --global user.email "bot@jamsos-intel.com"
+        git add data-regulasi/*.txt
+        git add data-regulasi/index_pustaka.json
+        git commit -m "Auto-index regulatory documents [skip ci]" || echo "No changes to commit"
+        git push
