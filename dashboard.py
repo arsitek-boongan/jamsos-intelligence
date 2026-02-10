@@ -16,41 +16,33 @@ WORKER_URL = "https://jamsos-brain.arsitek-boongan.workers.dev"
 # --- 2. CSS MODERN & RESPONSIF ---
 st.markdown("""
 <style>
-    /* 1. Hapus Jarak Berlebih di Atas */
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 5rem;
-    }
-
-    /* 2. Sembunyikan "Running" Notification Bawaan yang Mengganggu */
-    .stStatusWidget {
-        visibility: hidden;
-    }
+    /* Hapus Jarak Berlebih */
+    .block-container { padding-top: 2rem; padding-bottom: 5rem; }
     
-    /* 3. Style Status Banner (Laptop: Kiri-Kanan) */
+    /* Sembunyikan "Running" */
+    .stStatusWidget { visibility: hidden; }
+    
+    /* Status Banner Style */
     .status-box {
         padding: 25px;
         border-radius: 12px;
         color: white;
         margin-bottom: 25px;
-        display: flex;             /* Flexbox aktif */
-        justify-content: space-between; /* Jarak maksimal */
+        display: flex;
+        justify-content: space-between;
         align-items: center;
         box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         border: 1px solid rgba(255,255,255,0.1);
     }
     
-    /* 4. MEDIA QUERY KHUSUS HP (Mobile Fix) */
+    /* MEDIA QUERY (HP Fix) */
     @media (max-width: 600px) {
         .status-box {
-            flex-direction: column; /* Ubah jadi tumpuk ke bawah */
-            text-align: center;     /* Rata tengah */
-            gap: 15px;              /* Jarak antar elemen */
+            flex-direction: column;
+            text-align: center;
+            gap: 15px;
         }
-        .status-box > div {
-            width: 100%;           /* Lebar penuh */
-            text-align: center !important;
-        }
+        .status-box > div { width: 100%; text-align: center !important; }
     }
 
     /* Typography */
@@ -68,39 +60,52 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. LOGIC ---
-@st.cache_data(ttl=300, show_spinner=False) # Spinner kita handle sendiri
+# --- 3. LOGIC (DENGAN PENANGANAN ERROR KUOTA) ---
+@st.cache_data(ttl=300, show_spinner=False)
 def fetch_intel():
     try:
         r = requests.get(WORKER_URL, timeout=25)
-        if r.status_code == 200:
-            return r.json()
-    except:
-        return None
-    return None
+        data = r.json()
+        
+        # Cek jika Google Marah (Kuota Habis)
+        if "error" in data:
+            return {"system_error": True, "message": data["message"]}
+            
+        return data
+    except Exception as e:
+        return {"system_error": True, "message": str(e)}
 
 # --- 4. UI STRUCTURE ---
 
-# HEADER (Tanpa Icon, Tombol di Bawah)
-st.markdown("<h1 style='margin-bottom: 10px;'>Manpower Intel</h1>", unsafe_allow_html=True)
+# Header & Refresh
+st.markdown("<h1 style='margin-bottom: 5px;'>Manpower Intel</h1>", unsafe_allow_html=True)
 
-# Tombol Refresh (Plain Text Only)
 if st.button("Refresh Data"):
     st.cache_data.clear()
     st.rerun()
 
-# Spacer Dikit
 st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
 
-# LOAD DATA
-# Kita pakai spinner custom di layout utama biar tidak menutupi
-with st.spinner("Mengambil data satelit..."):
+# Load Data
+with st.spinner("Menghubungkan ke Satelit Intelijen..."):
     data = fetch_intel()
 
-if data:
+# --- LOGIKA TAMPILAN ---
+
+# Skenario 1: Error Kuota / Sistem
+if data and data.get("system_error"):
+    st.error("⚠️ SISTEM SEDANG SIBUK (Cooling Down)")
+    st.warning(f"Google API Rate Limit Reached. Mohon tunggu 1 menit sebelum refresh lagi.\n\nDetail: {data.get('message')}")
+
+# Skenario 2: Data Berhasil
+elif data:
     status = data.get('social_stability_index', 'UNKNOWN')
     tanggal = data.get('tanggal', '-')
     
+    # Hitung Waktu WIB (UTC + 7)
+    wib_now = datetime.utcnow() + timedelta(hours=7)
+    jam_wib = wib_now.strftime('%H:%M') + " WIB"
+
     # Logic Warna Flat
     if status == "HIJAU":
         bg_color = "#10B981" # Green
@@ -112,12 +117,7 @@ if data:
         bg_color = "#EF4444" # Red
         msg = "BAHAYA"
 
-    # --- A. STATUS BANNER (RESPONSIF & WIB) ---
-    
-    # HITUNG WAKTU WIB (UTC + 7 Jam)
-    wib_now = datetime.utcnow() + timedelta(hours=7)
-    jam_wib = wib_now.strftime('%H:%M') + " WIB"
-
+    # --- A. STATUS BANNER (WIB FIXED) ---
     st.markdown(f"""
     <div class="status-box" style="background-color: {bg_color};">
         <div style="text-align: left;">
@@ -142,7 +142,6 @@ if data:
     st.markdown("---")
 
     # --- C. MAIN CONTENT ---
-    # Layout Desktop: 2 Kolom (2:1). Layout HP: Otomatis Stack (1 Kolom)
     main_col, side_col = st.columns([2, 1])
 
     with main_col:
