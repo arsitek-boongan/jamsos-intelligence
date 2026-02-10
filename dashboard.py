@@ -2,287 +2,283 @@ import streamlit as st
 import requests
 from datetime import datetime
 
-# --- 1. KONFIGURASI HALAMAN (DARK MODE FORCED) ---
+# --- 1. SETUP HALAMAN (FORCE WIDE TAPI DI-LIMIT CSS) ---
 st.set_page_config(
-    page_title="Jamsos Command Center",
+    page_title="Jamsos Intel",
     page_icon="🛡️",
-    layout="centered", # Centered lebih bagus untuk fokus mobile
+    layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# 🔴 GANTI URL INI DENGAN WORKER ANDA 🔴
+# 🔴 URL WORKER (PASTIKAN BENAR) 🔴
 WORKER_URL = "https://jamsos-brain.arsitek-boongan.workers.dev"
 
-# --- 2. IPHONE UI/UX CSS INJECTION ---
+# --- 2. CSS ENGINE: TOTAL OVERHAUL (APPLE DARK MODE STYLE) ---
 st.markdown("""
 <style>
-    /* --- TYPOGRAPHY & BASE --- */
-    @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@400;600;800&display=swap');
-    
-    html, body, [class*="css"] {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-        background-color: #000000 !important; /* OLED Black */
-        color: #FFFFFF;
+    /* RESET TOTAL - PAKSA BACKGROUND HITAM PEKAT */
+    .stApp {
+        background-color: #000000 !important;
     }
     
-    /* Hapus padding atas bawaan yang mengganggu di HP */
+    /* Hapus Header & Footer Bawaan Streamlit */
+    header, footer, #MainMenu {visibility: hidden !important;}
+    
+    /* MOBILE CONTAINER LIMITER */
+    /* Di layar besar, batasi lebar agar seperti aplikasi HP. Di HP, full width. */
     .block-container {
-        padding-top: 1rem !important;
+        max-width: 500px !important;
+        padding-top: 2rem !important;
         padding-bottom: 5rem !important;
-        max-width: 600px; /* Batasi lebar agar terlihat seperti aplikasi HP di layar besar */
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        margin: auto !important;
     }
 
-    /* Sembunyikan elemen Streamlit */
-    #MainMenu, footer, header {visibility: hidden;}
-
-    /* --- GLASSMORPHISM CARDS (Gaya iPhone) --- */
-    .glass-card {
-        background: rgba(30, 30, 30, 0.60);
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border-radius: 24px; /* Super rounded corners */
-        border: 1px solid rgba(255, 255, 255, 0.1);
+    /* TYPOGRAPHY (Apple Style) */
+    html, body, p, div, h1, h2, h3, span {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+        color: #FFFFFF !important; /* Paksa teks putih */
+    }
+    
+    /* CARD SYSTEM (Apple Dark Gray) */
+    .ios-card {
+        background-color: #1C1C1E; /* Warna standar card iPhone Dark Mode */
+        border-radius: 18px;
         padding: 20px;
         margin-bottom: 16px;
-        text-align: center;
-        transition: transform 0.2s;
+        border: 1px solid #2C2C2E; /* Border halus */
     }
     
-    /* Efek tekan di HP */
-    .glass-card:active {
-        transform: scale(0.98);
-        background: rgba(50, 50, 50, 0.7);
-    }
-
-    /* --- HERO STATUS CARD (Yang Paling Besar) --- */
-    .hero-card {
-        padding: 30px 20px;
-        border-radius: 32px;
-        margin-bottom: 24px;
+    /* STATUS HEADER (Big & Bold) */
+    .status-container {
         text-align: center;
-        box-shadow: 0 10px 40px -10px rgba(0,0,0,0.8);
-        border: none;
+        padding: 30px 20px;
+        border-radius: 24px;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
     }
-    .hero-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.8; font-weight: 600; margin-bottom: 10px;}
-    .hero-status { font-size: 48px; font-weight: 800; line-height: 1; letter-spacing: -1px; margin: 0;}
-    .hero-subtitle { font-size: 16px; margin-top: 15px; font-weight: 500; opacity: 0.9; display: flex; align-items: center; justify-content: center; gap: 8px;}
-
-    /* --- METRIC MINI CARDS --- */
-    .metric-box {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 110px;
+    
+    /* ANIMASI PULSING (Indikator Live) */
+    @keyframes pulse-dot {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 255, 255, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
     }
-    .metric-icon { font-size: 28px; margin-bottom: 5px; }
-    .metric-value { font-size: 22px; font-weight: 700; }
-    .metric-label { font-size: 13px; opacity: 0.7; }
-
-    /* --- MODERN TABS (iOS Segmented Control Style) --- */
-    .stTabs {
-        background: rgba(30, 30, 30, 0.60);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        padding: 6px;
-        border-radius: 18px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+    .live-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: #FF3B30; /* Apple Red */
+        margin-right: 8px;
+        animation: pulse-dot 2s infinite;
+    }
+    
+    /* TEXT STYLES */
+    .text-subtle { color: #8E8E93 !important; font-size: 13px; font-weight: 500; }
+    .text-bold { font-weight: 700; font-size: 18px; }
+    .text-huge { font-weight: 800; font-size: 42px; letter-spacing: -1px; line-height: 1.1; margin: 10px 0; }
+    
+    /* GRID METRICS */
+    .metric-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 10px;
         margin-bottom: 20px;
     }
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 0px;
-        background-color: transparent;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 40px;
+    .metric-item {
+        background-color: #1C1C1E;
         border-radius: 14px;
-        border: none;
-        color: #AAAAAA;
-        font-weight: 600;
-        flex-grow: 1; /* Agar lebar tab sama rata */
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: rgba(255,255,255,0.15) !important;
-        color: white !important;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-    }
-
-    /* --- EXPANDERS (Accordion) --- */
-    .streamlit-expanderHeader {
-        background-color: transparent !important;
-        border: none !important;
-        font-weight: 600;
-        color: white !important;
-    }
-    .streamlit-expanderContent {
-        border: none !important;
-        padding-left: 1rem !important;
-        border-left: 2px solid rgba(255,255,255,0.2) !important;
-        margin-left: 0.5rem;
+        padding: 15px 10px;
+        text-align: center;
+        border: 1px solid #2C2C2E;
     }
     
-    /* --- CUSTOM BUTTON (Refresh) --- */
-    button[kind="secondary"] {
-        border-radius: 50%;
-        width: 45px;
-        height: 45px;
-        border: none;
-        background: rgba(255,255,255,0.1);
-        color: white;
+    /* TOMBOL REFRESH MINIMALIS */
+    .stButton > button {
+        background-color: #2C2C2E !important;
+        color: white !important;
+        border-radius: 12px !important;
+        border: none !important;
+        width: 100%;
+        padding: 10px;
+        font-weight: 600;
     }
-    button[kind="secondary"]:hover {
-        background: rgba(255,255,255,0.2);
-        border: none;
+    .stButton > button:active {
+        background-color: #3A3A3C !important;
     }
 
+    /* CUSTOM TABS OVERRIDE */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: #1C1C1E;
+        padding: 5px;
+        border-radius: 12px;
+        gap: 0;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 35px;
+        background-color: transparent;
+        border: none;
+        color: #8E8E93;
+        font-size: 14px;
+        font-weight: 600;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #3A3A3C !important;
+        color: white !important;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    /* REMOVE DEFAULT STREAMLIT PADDING */
+    .css-18e3th9 { padding: 0 !important; }
+    
+    /* LINK STYLING */
+    a { color: #0A84FF !important; text-decoration: none; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. FUNGSI FETCH DATA ---
-@st.cache_data(ttl=300) # Cache 5 menit agar lebih responsif
+# --- 3. LOGIC ---
+@st.cache_data(ttl=300)
 def get_data():
     try:
-        response = requests.get(WORKER_URL, timeout=10)
-        if response.status_code == 200:
-            return response.json()
+        r = requests.get(WORKER_URL, timeout=5)
+        return r.json() if r.status_code == 200 else None
     except: return None
-    return None
 
-# --- 4. UI UTAMA (COMMAND CENTER) ---
+# --- 4. UI CONSTRUCTION ---
 
-# HEADER (Minimalis ala iOS App)
-c1, c2 = st.columns([8,2])
+# Top Bar (Logo & Refresh)
+c1, c2 = st.columns([4, 1])
 with c1:
-    st.markdown("<div style='font-weight:800; font-size:22px; letter-spacing:-0.5px;'>Jamsos Intel</div>", unsafe_allow_html=True)
-    st.markdown("<div style='font-size:13px; opacity:0.7;'>Mobile Command Center</div>", unsafe_allow_html=True)
+    st.markdown("""
+    <div style="display:flex; align-items:center;">
+        <span style="font-size:20px; margin-right:10px;">🛡️</span>
+        <div>
+            <div style="font-weight:700; font-size:16px;">JAMSOS INTEL</div>
+            <div class="text-subtle">Command Center</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 with c2:
-    # Tombol Refresh Bulat
     if st.button("🔄"):
         st.cache_data.clear()
         st.rerun()
 
-st.divider()
+st.markdown("<br>", unsafe_allow_html=True)
 
-# LOAD DATA
-with st.spinner("Menghubungkan Satelit..."):
-    data = get_data()
+# Load Data
+data = get_data()
 
 if data:
-    # --- A. HERO SECTION (STATUS GLOWING) ---
     status = data.get('social_stability_index', 'UNKNOWN')
     tanggal = data.get('tanggal', '-')
     
-    # Konfigurasi Warna & Ikon Berdasarkan Status
+    # Color Logic (Hardcoded Hex Codes for Consistency)
     if status == "HIJAU":
-        # Neon Green Gradient
-        bg_hero = "linear-gradient(135deg, #00b09b, #96c93d)"
-        shadow_hero = "0 20px 50px -20px rgba(0, 176, 155, 0.6)"
-        icon_hero = "shield-checkmark" # Ionicon name (simulasi)
-        status_text = "AMAN TERKENDALI"
-        emoji = "✅"
+        bg_color = "#004d26" # Dark Green background
+        accent_color = "#30D158" # Apple Green text
+        status_msg = "SITUASI KONDUSIF"
+        icon = "checkmark.shield.fill"
     elif status == "KUNING":
-        # Warm Amber Gradient
-        bg_hero = "linear-gradient(135deg, #f2994a, #f2c94c)"
-        shadow_hero = "0 20px 50px -20px rgba(242, 153, 74, 0.6)"
-        icon_hero = "alert"
-        status_text = "WASPADA"
-        emoji = "⚠️"
+        bg_color = "#4d3a00"
+        accent_color = "#FFD60A" # Apple Yellow
+        status_msg = "PERLU ATENSI"
+        icon = "exclamationmark.triangle.fill"
     else: # MERAH
-        # Intense Red Gradient
-        bg_hero = "linear-gradient(135deg, #cb2d3e, #ef473a)"
-        shadow_hero = "0 20px 50px -20px rgba(203, 45, 62, 0.6)"
-        icon_hero = "nuclear"
-        status_text = "BAHAYA / KRISIS"
-        emoji = "🚨"
+        bg_color = "#4d0000"
+        accent_color = "#FF453A" # Apple Red
+        status_msg = "BAHAYA / KRISIS"
+        icon = "exclamationmark.octagon.fill"
 
-    # Render Hero Card
+    # --- A. STATUS HERO (The "Face") ---
     st.markdown(f"""
-    <div class="hero-card" style="background: {bg_hero}; box-shadow: {shadow_hero};">
-        <div class="hero-title">INDEKS STABILITAS SOSIAL</div>
-        <h1 class="hero-status">{status}</h1>
-        <div class="hero-subtitle">
-            <span style="font-size:20px">{emoji}</span> {status_text}
+    <div class="status-container" style="background: radial-gradient(circle at top right, {bg_color}, #000000);">
+        <div class="text-subtle" style="text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">Indeks Stabilitas</div>
+        <div class="text-huge" style="color: {accent_color} !important;">{status}</div>
+        <div style="margin-top:10px; display:flex; align-items:center; justify-content:center;">
+            <span class="live-indicator" style="background-color: {accent_color};"></span>
+            <span style="font-weight:600; font-size:14px;">{status_msg}</span>
         </div>
-        <div style="font-size:12px; margin-top:15px; opacity:0.8;">Last Update: {tanggal}</div>
+        <div class="text-subtle" style="margin-top:15px; opacity:0.6;">Update: {tanggal}</div>
     </div>
     """, unsafe_allow_html=True)
 
+    # --- B. METRICS GRID (Compact) ---
+    jml_sumber = len(data.get('sources', []))
+    risk_display = "Low" if status == "HIJAU" else "High"
+    risk_color = "#30D158" if status == "HIJAU" else "#FF453A"
 
-    # --- B. KEY METRICS GRID (Glassmorphism) ---
-    m1, m2, m3 = st.columns(3)
-    with m1:
-        st.markdown("""
-        <div class="glass-card metric-box">
-            <div class="metric-icon">📅</div>
-            <div class="metric-value">Harian</div>
-            <div class="metric-label">Periode</div>
+    st.markdown(f"""
+    <div class="metric-grid">
+        <div class="metric-item">
+            <div style="font-size:24px;">📅</div>
+            <div class="text-subtle" style="margin-top:5px;">Harian</div>
         </div>
-        """, unsafe_allow_html=True)
-    with m2:
-        jml_sumber = len(data.get('sources', []))
+        <div class="metric-item">
+            <div style="font-size:24px; font-weight:700;">{jml_sumber}</div>
+            <div class="text-subtle" style="margin-top:5px;">Sinyal</div>
+        </div>
+        <div class="metric-item">
+            <div style="font-size:24px; font-weight:700; color:{risk_color} !important;">{risk_display}</div>
+            <div class="text-subtle" style="margin-top:5px;">Risiko</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # --- C. CONTENT TABS ---
+    t1, t2, t3 = st.tabs(["Executive", "Analisis", "Raw Data"])
+
+    with t1:
         st.markdown(f"""
-        <div class="glass-card metric-box">
-            <div class="metric-icon">📡</div>
-            <div class="metric-value">{jml_sumber}</div>
-            <div class="metric-label">Sinyal Berita</div>
-        </div>
-        """, unsafe_allow_html=True)
-    with m3:
-        # Simpanan untuk fitur masa depan
-        risk_lvl = "Low" if status == "HIJAU" else "Med" if status == "KUNING" else "High"
-        st.markdown(f"""
-        <div class="glass-card metric-box">
-            <div class="metric-icon">📊</div>
-            <div class="metric-value">{risk_lvl}</div>
-            <div class="metric-label">Level Risiko</div>
+        <div class="ios-card">
+            <div class="text-subtle" style="margin-bottom:10px;">RINGKASAN INTELIJEN</div>
+            <div style="line-height:1.6; font-size:15px; opacity:0.9;">
+                {data.get('executive_summary', '-')}
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
-
-    # --- C. DETAIL TABS (iOS Style) ---
-    tab_exec, tab_analisis, tab_sumber = st.tabs(["Executive", "Analisis", "Sumber"])
-
-    with tab_exec:
-        st.markdown('<div class="glass-card" style="text-align:left;">', unsafe_allow_html=True)
-        st.subheader("Ringkasan Intelijen")
-        st.write(data.get('executive_summary', 'Tidak ada data.'))
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with tab_analisis:
-        st.markdown('<div class="glass-card" style="text-align:left; padding-bottom:10px;">', unsafe_allow_html=True)
-        st.subheader("Deep Dive Analysis")
-        
+    with t2:
         strat = data.get('strategic_analysis', {})
-        with st.expander("🏛️ Dampak Politik & Kebijakan"):
-            st.write(strat.get('political_impact', '-'))
-        with st.expander("🗣️ Sentimen Publik"):
-            st.write(strat.get('public_sentiment', '-'))
-
-        st.divider()
-        
         tech = data.get('technical_audit', {})
-        with st.expander("⚖️ Audit Regulasi"):
-            st.write(tech.get('regulations_involved', '-'))
-        with st.expander("⚙️ Risiko Operasional"):
-            st.write(tech.get('operational_risks', '-'))
-        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Custom "Details" View using HTML instead of st.expander for better style control
+        st.markdown(f"""
+        <div class="ios-card">
+            <div class="text-subtle" style="margin-bottom:10px;">DAMPAK POLITIK</div>
+            <div style="font-size:14px; margin-bottom:20px;">{strat.get('political_impact', '-')}</div>
+            <div style="height:1px; background-color:#2C2C2E; margin-bottom:20px;"></div>
+            <div class="text-subtle" style="margin-bottom:10px;">SENTIMEN PUBLIK</div>
+            <div style="font-size:14px;">{strat.get('public_sentiment', '-')}</div>
+        </div>
+        <div class="ios-card">
+            <div class="text-subtle" style="margin-bottom:10px;">AUDIT REGULASI</div>
+            <div style="font-size:14px;">{tech.get('regulations_involved', '-')}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    with tab_sumber:
-        st.markdown('<div class="glass-card" style="text-align:left;">', unsafe_allow_html=True)
-        st.subheader("Sinyal Masuk (Raw Data)")
+    with t3:
         sources = data.get('sources', [])
+        st.markdown('<div class="ios-card">', unsafe_allow_html=True)
         if sources:
             for s in sources:
                 st.markdown(f"""
-                <div style="margin-bottom:15px; padding-bottom:15px; border-bottom:1px solid rgba(255,255,255,0.1);">
-                    <div style="font-weight:600;">📰 {s.get('title')}</div>
-                    <a href="{s.get('url')}" target="_blank" style="font-size:13px; color:#4da6ff; text-decoration:none;">Buka Tautan Eksternal →</a>
+                <div style="padding-bottom:12px; margin-bottom:12px; border-bottom:1px solid #2C2C2E;">
+                    <div style="font-weight:600; font-size:14px; margin-bottom:4px;">{s.get('title')}</div>
+                    <a href="{s.get('url')}" target="_blank" style="font-size:12px;">🔗 Buka Sumber Asli</a>
                 </div>
                 """, unsafe_allow_html=True)
         else:
-            st.info("✅ Tidak ada sinyal berita negatif yang terdeteksi oleh satelit dalam 24 jam terakhir.")
+            st.markdown('<div style="text-align:center; opacity:0.5; font-size:14px;">Tidak ada sinyal berita negatif.</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
 else:
-    st.error("Gagal terhubung ke Jamsos Brain. Coba refresh.")
+    # Loading State (Clean)
+    st.markdown("""
+    <div style="text-align:center; padding-top:50px;">
+        <div style="font-size:14px; color:#8E8E93;">Menghubungkan ke Jamsos Brain...</div>
+    </div>
+    """, unsafe_allow_html=True)
