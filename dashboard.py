@@ -219,41 +219,34 @@ if data:
         else:
             st.caption("Tidak ada berita spesifik.")
 
-    # --- D. BIG DATA RAW FEED (MOBILE RESPONSIVE HTML) ---
+# --- D. BIG DATA RAW FEED (NATIVE CARD VIEW) ---
     st.markdown("---")
     with st.expander("📂 LIHAT DATA MENTAH (RAW BIG DATA FEED)", expanded=False):
+        st.caption(f"Menampilkan {total_scanned} data feed yang masuk hari ini.")
+        
         all_feed = data.get('all_feed', [])
         
         if all_feed:
-            # Kita bangun tabel HTML manual agar bisa wrap text
-            html_table = """
-            <table class="raw-table">
-                <thead>
-                    <tr>
-                        <th style="width: 15%;">Kategori</th>
-                        <th style="width: 70%;">Judul Berita</th>
-                        <th style="width: 15%;">Link</th>
-                    </tr>
-                </thead>
-                <tbody>
-            """
+            # Kita batasi tampilkan 50 saja agar HP tidak berat loadingnya
+            for item in all_feed[:50]:
+                # Kotak Kartu untuk setiap berita
+                with st.container(border=True):
+                    # Kolom Kiri (Teks) & Kanan (Tombol)
+                    c_text, c_btn = st.columns([4, 1])
+                    
+                    with c_text:
+                        # Label Kecil di atas
+                        label = item.get('type', '').replace('[','').replace(']','')
+                        st.caption(f"🏷️ {label}")
+                        # Judul Berita (Otomatis Wrap di HP)
+                        st.markdown(f"**{item.get('title', '-')}**")
+                    
+                    with c_btn:
+                        # Tombol Lihat Sederhana
+                        st.link_button("Lihat", item.get('url', '#'))
             
-            for item in all_feed:
-                # Bersihkan label dari kurung siku
-                label = item.get('type', '').replace('[','').replace(']','')
-                title = item.get('title', '-')
-                url = item.get('url', '#')
+            if len(all_feed) > 50:
+                st.caption(f"... dan {len(all_feed)-50} berita lainnya.")
                 
-                html_table += f"""
-                <tr>
-                    <td><span class="badge">{label}</span></td>
-                    <td class="wrap-text">{title}</td>
-                    <td><a href="{url}" target="_blank" class="link-btn">Lihat</a></td>
-                </tr>
-                """
-            
-            html_table += "</tbody></table>"
-            st.markdown(html_table, unsafe_allow_html=True)
-            
         else:
-            st.write("Data mentah tidak tersedia.")
+            st.info("Data mentah tidak tersedia saat ini.")
