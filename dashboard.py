@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import pandas as pd
 from datetime import datetime, timedelta
 
 # --- 1. CONFIG ---
@@ -10,179 +11,212 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 🔴 URL WORKER
+# 🔴 URL WORKER (Pastikan tidak ada slash di akhir)
 WORKER_URL = "https://jamsos-brain.arsitek-boongan.workers.dev"
 
-# --- 2. CSS MODERN ---
+# --- 2. CSS MODERN (Dark & Clean) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 2rem; padding-bottom: 5rem; }
-    .stStatusWidget { visibility: hidden; }
     
+    /* Status Box Style */
     .status-box {
-        padding: 25px;
+        padding: 20px;
         border-radius: 12px;
         color: white;
         margin-bottom: 25px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         border: 1px solid rgba(255,255,255,0.1);
     }
     
-    @media (max-width: 600px) {
-        .status-box {
-            flex-direction: column;
-            text-align: center;
-            gap: 15px;
-        }
-        .status-box > div { width: 100%; text-align: center !important; }
-    }
-
-    .big-stat { font-size: 2.5rem; font-weight: 800; line-height: 1.2; }
-    .sub-stat { font-size: 1rem; opacity: 0.9; font-weight: 500; letter-spacing: 1px; }
-    .meta-text { font-size: 0.8rem; opacity: 0.7; text-transform: uppercase; }
+    .big-stat { font-size: 2.8rem; font-weight: 800; line-height: 1.1; letter-spacing: -1px; }
+    .sub-stat { font-size: 1.1rem; opacity: 0.95; font-weight: 600; letter-spacing: 1px; }
+    .meta-text { font-size: 0.85rem; opacity: 0.8; text-transform: uppercase; margin-top: 5px; }
     
-    .content-card {
-        background-color: #262730;
-        padding: 20px;
-        border-radius: 10px;
-        border: 1px solid #444;
+    /* Card Style */
+    .stCard {
+        background-color: #1E1E1E;
+        border: 1px solid #333;
+        padding: 15px;
+        border-radius: 8px;
     }
+    
+    /* Metric Style override */
+    [data-testid="stMetricValue"] { font-size: 1.8rem !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. LOGIC SMART CACHE ---
-def get_intel_data():
+# --- 3. LOGIC SMART FETCH ---
+def fetch_data(force_reset=False):
     """
-    Mencoba ambil data baru.
-    Jika gagal/limit habis, pakai data lama di session_state.
+    Mengambil data dari Worker.
+    force_reset=True akan mengirim ?reset=true untuk memaksa AI mikir ulang.
     """
-    # 1. Coba ambil data baru
+    url = WORKER_URL
+    if force_reset:
+        url += "/?reset=true"
+        
     try:
-        r = requests.get(WORKER_URL, timeout=25)
+        # Timeout agak lama karena AI mikir keras (V26)
+        r = requests.get(url, timeout=45) 
         data = r.json()
         
-        # Jika Google Error (Resource Exhausted)
         if "error" in data:
-            # Cek apakah kita punya simpanan data lama?
-            if "last_valid_data" in st.session_state:
-                return st.session_state["last_valid_data"], True # True = Data Cache
-            else:
-                return {"system_error": True, "message": data["message"]}, False
-        
-        # Jika Sukses, Simpan ke memori (Session State)
-        st.session_state["last_valid_data"] = data
-        return data, False # False = Data Baru (Live)
-
+            return None, data["message"]
+            
+        return data, None
     except Exception as e:
-        # Jika koneksi putus, coba pakai data lama
-        if "last_valid_data" in st.session_state:
-            return st.session_state["last_valid_data"], True
-        return {"system_error": True, "message": str(e)}, False
+        return None, str(e)
 
-# --- 4. UI STRUCTURE ---
+# --- 4. MAIN LAYOUT ---
 
-st.markdown("<h1 style='margin-bottom: 5px;'>Manpower Intel</h1>", unsafe_allow_html=True)
+# Header & Control
+c1, c2 = st.columns([5, 1])
+with c1:
+    st.title("Manpower Intel")
+    st.caption("Sistem Pemantauan Stabilitas Ketenagakerjaan Berbasis AI & Big Data")
 
-# Tombol Refresh
-if st.button("Refresh Data"):
-    # Kita tidak clear cache st.cache_data agar session state tetap hidup
-    st.rerun()
+with c2:
+    # Tombol Hard Reset
+    if st.button("🔄 SCAN ULANG", type="primary", use_container_width=True):
+        with st.spinner("Memaksa Satelit Scan Ulang (30-60 detik)..."):
+            fresh_data, err = fetch_data(force_reset=True)
+            if fresh_data:
+                st.session_state["intel_data"] = fresh_data
+                st.rerun()
+            else:
+                st.error(f"Gagal Scan: {err}")
 
-st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
-
-# Load Data dengan Spinner
-with st.spinner("Menghubungkan ke Satelit Intelijen..."):
-    data, is_cached = get_intel_data()
-
-# --- LOGIKA TAMPILAN ---
-
-# Skenario 1: Error Total (Tidak ada data baru, tidak ada data lama)
-if data.get("system_error"):
-    st.error("⚠️ SISTEM SEDANG SIBUK")
-    st.warning(f"Google API sedang limit. Mohon tunggu 1 menit.\nDetail: {data.get('message')}")
-
-# Skenario 2: Data Tersedia (Entah baru atau lama)
+# Load Data (Cache Session)
+if "intel_data" not in st.session_state:
+    with st.spinner("Menghubungkan ke Brain V26..."):
+        data, err = fetch_data()
+        if data:
+            st.session_state["intel_data"] = data
+        else:
+            st.error(f"Koneksi Gagal: {err}")
+            st.stop()
 else:
-    # Notifikasi jika pakai data lama (Cache)
-    if is_cached:
-        st.warning("⚠️ Menggunakan Data Terakhir (Google API Limit Reached - Cooling Down 1 Menit)")
-    
+    data = st.session_state["intel_data"]
+
+# --- 5. VISUALISASI DATA ---
+
+if data:
+    # Parsing Data Utama
     status = data.get('social_stability_index', 'UNKNOWN')
     tanggal = data.get('tanggal', '-')
+    total_scanned = data.get('total_scanned', 0) # Fitur V26
     
-    # Hitung Waktu WIB (UTC + 7)
-    wib_now = datetime.utcnow() + timedelta(hours=7)
-    jam_wib = wib_now.strftime('%H:%M') + " WIB"
-
     # Warna Status
     if status == "HIJAU":
-        bg_color = "#10B981"
-        msg = "STABIL / AMAN"
+        bg_color = "#10B981" # Green
+        msg = "KONDUSIF"
+        icon = "✅"
     elif status == "KUNING":
-        bg_color = "#F59E0B"
-        msg = "WASPADA"
+        bg_color = "#F59E0B" # Amber
+        msg = "WASPADA / ESKALASI"
+        icon = "⚠️"
     else:
-        bg_color = "#EF4444"
-        msg = "BAHAYA"
+        bg_color = "#EF4444" # Red
+        msg = "BAHAYA / KRISIS"
+        icon = "🚨"
 
-    # STATUS BANNER
+    # A. STATUS BANNER
     st.markdown(f"""
     <div class="status-box" style="background-color: {bg_color};">
-        <div style="text-align: left;">
+        <div>
             <div class="meta-text">INDEKS STABILITAS SOSIAL</div>
-            <div class="big-stat">{status}</div>
+            <div class="big-stat">{icon} {status}</div>
             <div class="sub-stat">{msg}</div>
         </div>
         <div style="text-align: right;">
-            <div class="big-stat">{jam_wib}</div>
-            <div class="meta-text">Live Monitoring • {tanggal}</div>
+            <div class="big-stat">{total_scanned}</div>
+            <div class="sub-stat">Sinyal Terdeteksi</div>
+            <div class="meta-text">Last Update: {tanggal}</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # KPI GRID
-    k1, k2, k3, k4 = st.columns(4)
-    with k1: st.metric("📅 Laporan", tanggal)
-    with k2: st.metric("📡 Sinyal", f"{len(data.get('sources', []))} Berita")
-    with k3: st.metric("🤖 AI Status", "Standby" if is_cached else "Active")
-    with k4: st.metric("📊 Risiko", "Rendah" if status=="HIJAU" else "Tinggi")
+    # B. METRICS GRID
+    m1, m2, m3, m4 = st.columns(4)
+    with m1: st.metric("📡 Total Scanning", f"{total_scanned} Feed", help="Total berita mentah yang dibaca sistem hari ini.")
+    with m2: st.metric("🎯 Isu Kritis", f"{len(data.get('sources', []))} Item", help="Jumlah isu yang lolos filter AI.")
+    with m3: 
+        reg_count = data.get('technical_audit', {}).get('regulations_matched', '0')
+        has_reg = "Ada" if "Sesuai" in str(reg_count) else "Umum"
+        st.metric("⚖️ Basis Hukum", has_reg)
+    with m4: st.metric("🤖 AI Engine", "Hybrid V26")
 
     st.markdown("---")
 
-    # CONTENT
-    main_col, side_col = st.columns([2, 1])
+    # C. ANALISIS & SUMBER
+    main, side = st.columns([2, 1])
 
-    with main_col:
-        st.subheader("📑 Executive Summary")
-        st.info(data.get('executive_summary', '-'))
+    with main:
+        st.subheader("📑 Executive Summary (Deep Analysis)")
+        exec_sum = data.get('executive_summary', '-')
+        if "Auto-Source" in exec_sum:
+            st.warning("⚠️ Catatan: Analisis menggunakan mode otomatis karena AI tidak memilih spesifik.")
+        st.info(exec_sum)
         
-        st.subheader("🧠 Analisis Strategis")
-        strat = data.get('strategic_analysis', {})
+        # Tab Analisis
+        tab1, tab2, tab3 = st.tabs(["🧠 Strategis", "⚖️ Audit Hukum (Evidence)", "🔥 Dampak Politik"])
         
-        with st.expander("🏛️ Dampak Politik", expanded=True):
-            st.write(strat.get('political_impact', '-'))
-        with st.expander("🗣️ Sentimen Publik"):
-            st.write(strat.get('public_sentiment', '-'))
-        with st.expander("⚖️ Audit Regulasi"):
-            tech = data.get('technical_audit', {})
-            st.write(f"**Regulasi:** {tech.get('regulations_involved', '-')}")
-            st.write(f"**Risiko:** {tech.get('operational_risks', '-')}")
+        with tab1:
+            strat = data.get('strategic_analysis', {})
+            st.markdown(f"**Sentimen Publik:**\n{strat.get('public_sentiment', '-')}")
+        
+        with tab2:
+            audit = data.get('technical_audit', {})
+            st.markdown("#### 📜 Pencocokan Regulasi (Database User)")
+            # Fitur V25/V26: Regulations Matched
+            reg_match = audit.get('regulations_matched', 'Tidak ada data')
+            if "Tidak ditemukan" in reg_match:
+                st.error(reg_match)
+            else:
+                st.success(reg_match)
+                
+            st.markdown("#### ⚠️ Celah Kepatuhan (Compliance Gap)")
+            st.write(audit.get('compliance_gap', audit.get('operational_risks', '-')))
 
-    with side_col:
-        st.subheader("🔗 Sumber Data")
+        with tab3:
+             strat = data.get('strategic_analysis', {})
+             st.write(strat.get('political_impact', '-'))
+
+    with side:
+        st.subheader(f"🔗 {len(data.get('sources', []))} Sumber Terpilih")
         sources = data.get('sources', [])
+        
         if sources:
             for s in sources:
-                with st.container(border=True):
-                    st.markdown(f"**{s.get('title')}**")
-                    st.markdown(f"[Buka Link ↗️]({s.get('url')})")
+                with st.expander(f"📰 {s.get('title')[:40]}...", expanded=True):
+                    st.caption(s.get('title'))
+                    st.markdown(f"[Buka Artikel Asli ↗️]({s.get('url')})")
         else:
-            st.caption("Tidak ada berita negatif signifikan.")
-            st.markdown("""
-            <div style="padding:20px; border:1px dashed #555; border-radius:10px; text-align:center; color:#777; font-size:12px;">
-                System Scanning...
-            </div>
-            """, unsafe_allow_html=True)
+            st.caption("Tidak ada berita spesifik terpilih.")
+
+    # D. BIG DATA RAW FEED (Fitur V26)
+    st.markdown("---")
+    with st.expander("📂 LIHAT DATA MENTAH (RAW BIG DATA FEED)", expanded=False):
+        st.caption("Ini adalah seluruh data yang masuk ke mesin penggilingan AI sebelum disaring.")
+        
+        all_feed = data.get('all_feed', [])
+        if all_feed:
+            # Buat DataFrame agar rapi
+            df = pd.DataFrame(all_feed)
+            if not df.empty and 'title' in df.columns:
+                st.dataframe(
+                    df[['type', 'title', 'url']], 
+                    column_config={
+                        "url": st.column_config.LinkColumn("Link Asli"),
+                        "type": "Kategori",
+                        "title": "Judul Berita"
+                    },
+                    use_container_width=True,
+                    hide_index=True
+                )
+        else:
+            st.write("Data mentah tidak disertakan dalam respon ini.")
