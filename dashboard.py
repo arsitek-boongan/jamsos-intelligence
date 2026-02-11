@@ -36,14 +36,13 @@ st.markdown("""
     .sub-stat { font-size: 1.1rem; opacity: 0.95; font-weight: 600; letter-spacing: 1px; }
     .meta-text { font-size: 0.85rem; opacity: 0.8; text-transform: uppercase; margin-top: 5px; }
     
-    /* Card & Button Override */
+    /* Button Override */
     .stButton button { width: 100%; border-radius: 5px; }
 </style>
 """, unsafe_allow_html=True)
 
 # --- 3. LOGIC SMART FETCH ---
 def get_wib_time():
-    # Hitung waktu sekarang dalam WIB (UTC + 7)
     return (datetime.utcnow() + timedelta(hours=7)).strftime("%d %b %Y, %H:%M WIB")
 
 def fetch_data(force_reset=False):
@@ -65,29 +64,28 @@ def fetch_data(force_reset=False):
 st.title("Manpower Intel")
 st.caption("Sistem Pemantauan Stabilitas Ketenagakerjaan Berbasis AI & Big Data")
 
-# TOMBOL REFRESH (Posisi di bawah Judul)
+# TOMBOL REFRESH
 if st.button("Refresh"):
     with st.spinner("Memperbarui Data Intelijen..."):
         fresh_data, err = fetch_data(force_reset=True)
         if fresh_data:
             st.session_state["intel_data"] = fresh_data
-            st.session_state["last_update_wib"] = get_wib_time() # Update Jam
+            st.session_state["last_update_wib"] = get_wib_time()
             st.rerun()
         else:
             st.error(f"Gagal Refresh: {err}")
 
-# Load Data Awal (Jika belum ada di session)
+# Load Data Awal
 if "intel_data" not in st.session_state:
     with st.spinner("Menghubungkan ke Brain V26..."):
         data, err = fetch_data()
         if data:
             st.session_state["intel_data"] = data
-            st.session_state["last_update_wib"] = get_wib_time() # Set Jam Awal
+            st.session_state["last_update_wib"] = get_wib_time()
         else:
             st.error(f"Koneksi Gagal: {err}")
             st.stop()
 
-# Ambil data dari Session State
 data = st.session_state["intel_data"]
 last_update = st.session_state.get("last_update_wib", "-")
 
@@ -111,7 +109,7 @@ if data:
         msg = "BAHAYA / KRISIS"
         icon = "🚨"
 
-    # A. STATUS BANNER (DENGAN JAM WIB)
+    # A. STATUS BANNER
     st.markdown(f"""
     <div class="status-box" style="background-color: {bg_color};">
         <div>
@@ -177,23 +175,32 @@ if data:
             for s in sources:
                 with st.expander(f"📰 {s.get('title')[:40]}...", expanded=True):
                     st.caption(s.get('title'))
-                    st.markdown(f"[Buka Artikel Asli ↗️]({s.get('url')})")
+                    # Link tanpa icon aneh-aneh
+                    st.markdown(f"[Buka Artikel Asli]({s.get('url')})")
         else:
             st.caption("Tidak ada berita spesifik.")
 
-    # D. BIG DATA RAW FEED
+    # D. BIG DATA RAW FEED (TABEL SEMPURNA)
     st.markdown("---")
     with st.expander("📂 LIHAT DATA MENTAH (RAW BIG DATA FEED)", expanded=False):
         all_feed = data.get('all_feed', [])
         if all_feed:
             df = pd.DataFrame(all_feed)
             if not df.empty and 'title' in df.columns:
+                
+                # Ubah kolom URL jadi display text "Lihat"
+                df['url_display'] = df['url'] 
+                
                 st.dataframe(
-                    df[['type', 'title', 'url']], 
+                    df[['type', 'title', 'url_display']], 
                     column_config={
-                        "url": st.column_config.LinkColumn("Link"),
-                        "type": "Label",
-                        "title": "Judul"
+                        "type": st.column_config.TextColumn("Kategori", width="small"),
+                        "title": st.column_config.TextColumn("Judul Berita", width="large"), # Judul Lebar
+                        "url_display": st.column_config.LinkColumn(
+                            "Akses", 
+                            display_text="Lihat", # Teks Link jadi 'Lihat'
+                            width="small"
+                        ),
                     },
                     use_container_width=True,
                     hide_index=True
