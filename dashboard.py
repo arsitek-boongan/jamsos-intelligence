@@ -80,7 +80,7 @@ if st.button("Refresh"):
 
 # Load Data Awal
 if "intel_data" not in st.session_state:
-    with st.spinner("Membangun Koneksi ke Brain V40..."):
+    with st.spinner("Membangun Koneksi ke Brain V53..."):
         data, err = fetch_data()
         if data:
             st.session_state["intel_data"] = data
@@ -96,6 +96,16 @@ last_update = st.session_state.get("last_update_wib", "-")
 # --- 5. VISUALISASI UTAMA ---
 
 if data:
+    # --- [MODIFIKASI] VISUALISASI STATUS ENGINE (Supaya Terlihat) ---
+    engine_status = data.get("ai_engine", "System Ready")
+    if "Gemini" in engine_status:
+        st.success(f"**STATUS SYSTEM:** {engine_status}", icon="⚡")
+    elif "Emergency" in engine_status or "Offline" in engine_status:
+        st.error(f"**STATUS SYSTEM:** {engine_status}", icon="🆘")
+    else:
+        st.warning(f"**STATUS SYSTEM:** {engine_status}", icon="🛡️")
+    # -------------------------------------------------------------
+
     status = data.get('social_stability_index', 'UNKNOWN')
     total_scanned = data.get('total_scanned', 0)
     
@@ -136,9 +146,11 @@ if data:
     with m3: 
         audit = data.get('technical_audit', {})
         reg_match = audit.get('regulations_involved', audit.get('regulations_matched', ''))
-        has_reg = "Ada" if "Sesuai" in str(reg_match) else "Umum"
+        has_reg = "Ada" if "Sesuai" in str(reg_match) or "UU" in str(reg_match) else "Umum"
         st.metric("⚖️ Basis Hukum", has_reg)
-    with m4: st.metric("🤖 AI Engine", "Hybrid V40")
+    with m4: 
+        # [MODIFIKASI] Mengambil data real dari Worker V53
+        st.metric("🤖 AI Engine", data.get('ai_engine', 'Hybrid V53'))
 
     st.markdown("---")
 
@@ -182,7 +194,7 @@ if data:
             for s in sources:
                 # Expander Default Tertutup agar tampilan samping bersih
                 title_clean = s.get('title', '')[:35] + "..." if len(s.get('title', '')) > 35 else s.get('title', '')
-                with st.expander(f"📰 {title_short if 'title_short' in locals() else title_clean}", expanded=False):
+                with st.expander(f"📰 {title_clean}", expanded=False):
                     st.caption(s.get('title'))
                     st.markdown(f"[Buka Artikel Asli]({s.get('url')})")
         else:
