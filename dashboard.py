@@ -11,10 +11,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 🔴 URL WORKER
+# 🔴 URL WORKER (Endpoint Pusat Analisis)
 WORKER_URL = "https://jamsos-brain.arsitek-boongan.workers.dev"
 
-# --- 2. CSS MODERN ---
+# --- 2. CSS CUSTOM (UI/UX MODERN) ---
 st.markdown("""
 <style>
     .block-container { padding-top: 2rem; padding-bottom: 5rem; }
@@ -36,62 +36,24 @@ st.markdown("""
     .sub-stat { font-size: 1.1rem; opacity: 0.95; font-weight: 600; letter-spacing: 1px; }
     .meta-text { font-size: 0.85rem; opacity: 0.8; text-transform: uppercase; margin-top: 5px; }
     
-    .stButton button { width: 100%; border-radius: 5px; }
-    
-    /* CUSTOM TABLE STYLE (MOBILE FRIENDLY) */
-    .raw-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-family: sans-serif;
-        font-size: 14px;
-    }
-    .raw-table th {
-        text-align: left;
-        padding: 12px 8px;
-        border-bottom: 2px solid #555;
-        color: #aaa;
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 12px;
-    }
-    .raw-table td {
-        padding: 12px 8px;
-        border-bottom: 1px solid #333;
-        vertical-align: top; /* Agar teks mulai dari atas */
-        line-height: 1.5;
-        color: #e0e0e0;
-    }
-    /* KUNCI MOBILE RESPONSIVE: Wrap Text */
-    .wrap-text {
-        white-space: normal !important; 
-        word-wrap: break-word;
-    }
-    .badge {
-        background: #333;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 11px;
-        color: #bbb;
-        white-space: nowrap;
-    }
-    .link-btn {
-        color: #4da6ff;
-        text-decoration: none;
-        font-weight: bold;
-    }
-    .link-btn:hover { text-decoration: underline; }
+    /* Button Style */
+    .stButton button { width: 100%; border-radius: 5px; height: 3em; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. LOGIC ---
+# --- 3. LOGIC PENGAMBILAN DATA ---
 def get_wib_time():
+    """Mengambil waktu saat ini dalam format WIB"""
     return (datetime.utcnow() + timedelta(hours=7)).strftime("%d %b %Y, %H:%M WIB")
 
 def fetch_data(force_reset=False):
+    """Mengambil data dari Cloudflare Worker"""
     url = WORKER_URL
     if force_reset:
         url += "/?reset=true"
+        
     try:
+        # Timeout 45 detik karena AI melakukan Deep Audit pada puluhan berita
         r = requests.get(url, timeout=45) 
         data = r.json()
         if "error" in data:
@@ -100,14 +62,14 @@ def fetch_data(force_reset=False):
     except Exception as e:
         return None, str(e)
 
-# --- 4. MAIN LAYOUT ---
+# --- 4. HEADER & CONTROL ---
 
 st.title("Manpower Intel")
-st.caption("Sistem Pemantauan Stabilitas Ketenagakerjaan Berbasis AI & Big Data")
+st.caption("Intelijen Strategis Ketenagakerjaan • Real-time Monitoring & Regulatory Audit")
 
-# TOMBOL REFRESH
+# Tombol Refresh (Posisi Desktop: Di bawah Judul)
 if st.button("Refresh"):
-    with st.spinner("Memperbarui Data Intelijen..."):
+    with st.spinner("Memproses Big Data & Sinkronisasi Regulasi..."):
         fresh_data, err = fetch_data(force_reset=True)
         if fresh_data:
             st.session_state["intel_data"] = fresh_data
@@ -116,9 +78,9 @@ if st.button("Refresh"):
         else:
             st.error(f"Gagal Refresh: {err}")
 
-# Load Data
+# Load Data Awal
 if "intel_data" not in st.session_state:
-    with st.spinner("Menghubungkan ke Brain V26..."):
+    with st.spinner("Membangun Koneksi ke Brain V26..."):
         data, err = fetch_data()
         if data:
             st.session_state["intel_data"] = data
@@ -127,18 +89,20 @@ if "intel_data" not in st.session_state:
             st.error(f"Koneksi Gagal: {err}")
             st.stop()
 
+# Gunakan data dari memori sesi
 data = st.session_state["intel_data"]
 last_update = st.session_state.get("last_update_wib", "-")
 
-# --- 5. VISUALISASI ---
+# --- 5. VISUALISASI UTAMA ---
 
 if data:
     status = data.get('social_stability_index', 'UNKNOWN')
     total_scanned = data.get('total_scanned', 0)
     
+    # Konfigurasi Banner Berdasarkan Status
     if status == "HIJAU":
         bg_color = "#10B981"
-        msg = "KONDUSIF"
+        msg = "STABIL / KONDUSIF"
         icon = "✅"
     elif status == "KUNING":
         bg_color = "#F59E0B"
@@ -149,7 +113,7 @@ if data:
         msg = "BAHAYA / KRISIS"
         icon = "🚨"
 
-    # STATUS BANNER
+    # A. BANNER STATUS STRATEGIS
     st.markdown(f"""
     <div class="status-box" style="background-color: {bg_color};">
         <div>
@@ -160,99 +124,90 @@ if data:
         <div style="text-align: right;">
             <div class="big-stat">{total_scanned}</div>
             <div class="sub-stat">Sinyal Terdeteksi</div>
-            <div class="meta-text">Last Update: {last_update}</div>
+            <div class="meta-text">Update: {last_update}</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # METRICS
+    # B. KPI SUMMARY
     m1, m2, m3, m4 = st.columns(4)
-    with m1: st.metric("📡 Total Scanning", f"{total_scanned} Feed")
+    with m1: st.metric("📡 Scanning", f"{total_scanned} Feed")
     with m2: st.metric("🎯 Isu Kritis", f"{len(data.get('sources', []))} Item")
     with m3: 
-        reg_count = data.get('technical_audit', {}).get('regulations_matched', '0')
-        has_reg = "Ada" if "Sesuai" in str(reg_count) else "Umum"
+        audit = data.get('technical_audit', {})
+        reg_match = audit.get('regulations_involved', audit.get('regulations_matched', ''))
+        has_reg = "Ada" if "Sesuai" in str(reg_match) else "Umum"
         st.metric("⚖️ Basis Hukum", has_reg)
     with m4: st.metric("🤖 AI Engine", "Hybrid V26")
 
     st.markdown("---")
 
-    # EXECUTIVE SUMMARY & SOURCES
-    main, side = st.columns([2, 1])
+    # C. ANALISIS MENDALAM & SUMBER BERITA
+    main_col, side_col = st.columns([2, 1])
 
-    with main:
+    with main_col:
         st.subheader("📑 Executive Summary")
         exec_sum = data.get('executive_summary', '-')
         if "Auto-Source" in exec_sum:
-            st.warning("⚠️ Mode Otomatis: AI tidak merinci sumber spesifik.")
+            st.warning("⚠️ Catatan: Analisis menggunakan mode sampling otomatis.")
         st.info(exec_sum)
         
-        tab1, tab2, tab3 = st.tabs(["🧠 Strategis", "⚖️ Audit Hukum", "🔥 Politik"])
+        # Tabs Analisis Strategis
+        t1, t2, t3 = st.tabs(["🧠 Strategis", "⚖️ Audit Regulasi", "🔥 Dampak Politik"])
         
-        with tab1:
+        with t1:
             strat = data.get('strategic_analysis', {})
             st.markdown(f"**Sentimen Publik:**\n{strat.get('public_sentiment', '-')}")
         
-        with tab2:
-            audit = data.get('technical_audit', {})
-            reg_match = audit.get('regulations_matched', 'Tidak ada data')
-            if "Tidak ditemukan" in reg_match or "Gagal" in reg_match:
+        with t2:
+            st.markdown("#### Hasil Audit Database User")
+            # Logika Audit Regulasi (Pencocokan Database)
+            reg_match = audit.get('regulations_matched', audit.get('regulations_involved', 'Tidak ada data'))
+            if "Tidak ditemukan" in reg_match or "TIDAK ADA" in reg_match:
                 st.error(reg_match)
             else:
                 st.success(reg_match)
-            st.markdown("**Compliance Gap:**")
-            st.write(audit.get('compliance_gap', '-'))
+            
+            st.markdown("#### Compliance Gap & Risks")
+            st.write(audit.get('compliance_gap', audit.get('operational_risks', '-')))
 
-        with tab3:
-             strat = data.get('strategic_analysis', {})
-             st.write(strat.get('political_impact', '-'))
+        with t3:
+             st.write(data.get('strategic_analysis', {}).get('political_impact', '-'))
 
-        with side:
-        st.subheader(f"🔗 {len(data.get('sources', []))} Sumber")
+    with side_col:
+        st.subheader(f"🔗 {len(data.get('sources', []))} Sumber Terpilih")
         sources = data.get('sources', [])
         
         if sources:
             for s in sources:
-                # Ambil judul pendek untuk header expander
-                title_short = s.get('title', '')[:35] + "..." if len(s.get('title', '')) > 35 else s.get('title', '')
-                
-                # expanded=False agar tertutup (clean look)
-                with st.expander(f"📰 {title_short}", expanded=False):
-                    # Judul lengkap ada di dalam
+                # Expander Default Tertutup agar tampilan samping bersih
+                title_clean = s.get('title', '')[:35] + "..." if len(s.get('title', '')) > 35 else s.get('title', '')
+                with st.expander(f"📰 {title_short if 'title_short' in locals() else title_clean}", expanded=False):
                     st.caption(s.get('title'))
-                    # Link buka artikel
                     st.markdown(f"[Buka Artikel Asli]({s.get('url')})")
         else:
-            st.caption("Tidak ada berita spesifik.")
+            st.caption("Tidak ada berita krusial yang terpilih.")
 
-# --- D. BIG DATA RAW FEED (NATIVE CARD VIEW) ---
+    # D. RAW BIG DATA FEED (CARD VIEW UNTUK HP)
     st.markdown("---")
     with st.expander("📂 LIHAT DATA MENTAH (RAW BIG DATA FEED)", expanded=False):
-        st.caption(f"Menampilkan {total_scanned} data feed yang masuk hari ini.")
+        st.caption(f"Menampilkan {total_scanned} data berita yang berhasil disedot sistem hari ini.")
         
         all_feed = data.get('all_feed', [])
-        
         if all_feed:
-            # Kita batasi tampilkan 50 saja agar HP tidak berat loadingnya
+            # Loop melalui feed (Batasi 50 agar tidak berat di HP)
             for item in all_feed[:50]:
-                # Kotak Kartu untuk setiap berita
                 with st.container(border=True):
-                    # Kolom Kiri (Teks) & Kanan (Tombol)
-                    c_text, c_btn = st.columns([4, 1])
-                    
-                    with c_text:
-                        # Label Kecil di atas
-                        label = item.get('type', '').replace('[','').replace(']','')
+                    c_txt, c_lk = st.columns([5, 1])
+                    with c_txt:
+                        label = item.get('type', 'NEWS').replace('[','').replace(']','')
                         st.caption(f"🏷️ {label}")
-                        # Judul Berita (Otomatis Wrap di HP)
+                        # Judul akan otomatis wrapping ke bawah jika panjang
                         st.markdown(f"**{item.get('title', '-')}**")
-                    
-                    with c_btn:
-                        # Tombol Lihat Sederhana
+                    with c_lk:
                         st.link_button("Lihat", item.get('url', '#'))
-            
-            if len(all_feed) > 50:
-                st.caption(f"... dan {len(all_feed)-50} berita lainnya.")
-                
         else:
-            st.info("Data mentah tidak tersedia saat ini.")
+            st.info("Feed data mentah tidak tersedia.")
+
+# Footer
+st.markdown("<br><hr><center><small>Manpower Intelligence System © 2026</small></center>", unsafe_allow_html=True)
