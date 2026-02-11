@@ -149,8 +149,21 @@ if data:
         has_reg = "Ada" if "Sesuai" in str(reg_match) or "UU" in str(reg_match) else "Umum"
         st.metric("⚖️ Basis Hukum", has_reg)
     with m4: 
-        # [MODIFIKASI] Mengambil data real dari Worker V53
-        st.metric("🤖 AI Engine", data.get('ai_engine', 'Hybrid V53'))
+            # [LOGIKA PEMENDEK TEKS] Agar muat di kotak kecil
+            raw_engine = data.get('ai_engine', 'Hybrid V53')
+            
+            if "Gemini" in raw_engine:
+                display_text = "Gemini Flash ⚡"
+            elif "70B" in raw_engine:
+                display_text = "Groq 70B 🛡️"
+            elif "8B" in raw_engine:
+                display_text = "Groq 8B (SOS)" # Singkat, Padat, Jelas
+            elif "Offline" in raw_engine:
+                display_text = "OFFLINE ❌"
+            else:
+                display_text = "Hybrid V53"
+                
+            st.metric("🤖 AI Engine", display_text)
 
     st.markdown("---")
 
