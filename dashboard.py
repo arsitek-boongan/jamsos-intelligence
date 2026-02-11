@@ -207,14 +207,20 @@ if data:
              strat = data.get('strategic_analysis', {})
              st.write(strat.get('political_impact', '-'))
 
-    with side:
+        with side:
         st.subheader(f"🔗 {len(data.get('sources', []))} Sumber")
         sources = data.get('sources', [])
         
         if sources:
             for s in sources:
-                with st.expander(f"📰 {s.get('title')[:40]}...", expanded=True):
+                # Ambil judul pendek untuk header expander
+                title_short = s.get('title', '')[:35] + "..." if len(s.get('title', '')) > 35 else s.get('title', '')
+                
+                # expanded=False agar tertutup (clean look)
+                with st.expander(f"📰 {title_short}", expanded=False):
+                    # Judul lengkap ada di dalam
                     st.caption(s.get('title'))
+                    # Link buka artikel
                     st.markdown(f"[Buka Artikel Asli]({s.get('url')})")
         else:
             st.caption("Tidak ada berita spesifik.")
