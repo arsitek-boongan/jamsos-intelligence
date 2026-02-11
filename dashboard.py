@@ -36,12 +36,54 @@ st.markdown("""
     .sub-stat { font-size: 1.1rem; opacity: 0.95; font-weight: 600; letter-spacing: 1px; }
     .meta-text { font-size: 0.85rem; opacity: 0.8; text-transform: uppercase; margin-top: 5px; }
     
-    /* Button Override */
     .stButton button { width: 100%; border-radius: 5px; }
+    
+    /* CUSTOM TABLE STYLE (MOBILE FRIENDLY) */
+    .raw-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: sans-serif;
+        font-size: 14px;
+    }
+    .raw-table th {
+        text-align: left;
+        padding: 12px 8px;
+        border-bottom: 2px solid #555;
+        color: #aaa;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 12px;
+    }
+    .raw-table td {
+        padding: 12px 8px;
+        border-bottom: 1px solid #333;
+        vertical-align: top; /* Agar teks mulai dari atas */
+        line-height: 1.5;
+        color: #e0e0e0;
+    }
+    /* KUNCI MOBILE RESPONSIVE: Wrap Text */
+    .wrap-text {
+        white-space: normal !important; 
+        word-wrap: break-word;
+    }
+    .badge {
+        background: #333;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 11px;
+        color: #bbb;
+        white-space: nowrap;
+    }
+    .link-btn {
+        color: #4da6ff;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    .link-btn:hover { text-decoration: underline; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. LOGIC SMART FETCH ---
+# --- 3. LOGIC ---
 def get_wib_time():
     return (datetime.utcnow() + timedelta(hours=7)).strftime("%d %b %Y, %H:%M WIB")
 
@@ -49,7 +91,6 @@ def fetch_data(force_reset=False):
     url = WORKER_URL
     if force_reset:
         url += "/?reset=true"
-        
     try:
         r = requests.get(url, timeout=45) 
         data = r.json()
@@ -59,7 +100,7 @@ def fetch_data(force_reset=False):
     except Exception as e:
         return None, str(e)
 
-# --- 4. MAIN LAYOUT & CONTROL ---
+# --- 4. MAIN LAYOUT ---
 
 st.title("Manpower Intel")
 st.caption("Sistem Pemantauan Stabilitas Ketenagakerjaan Berbasis AI & Big Data")
@@ -75,7 +116,7 @@ if st.button("Refresh"):
         else:
             st.error(f"Gagal Refresh: {err}")
 
-# Load Data Awal
+# Load Data
 if "intel_data" not in st.session_state:
     with st.spinner("Menghubungkan ke Brain V26..."):
         data, err = fetch_data()
@@ -89,13 +130,12 @@ if "intel_data" not in st.session_state:
 data = st.session_state["intel_data"]
 last_update = st.session_state.get("last_update_wib", "-")
 
-# --- 5. VISUALISASI DATA ---
+# --- 5. VISUALISASI ---
 
 if data:
     status = data.get('social_stability_index', 'UNKNOWN')
     total_scanned = data.get('total_scanned', 0)
     
-    # Warna Status
     if status == "HIJAU":
         bg_color = "#10B981"
         msg = "KONDUSIF"
@@ -109,7 +149,7 @@ if data:
         msg = "BAHAYA / KRISIS"
         icon = "🚨"
 
-    # A. STATUS BANNER
+    # STATUS BANNER
     st.markdown(f"""
     <div class="status-box" style="background-color: {bg_color};">
         <div>
@@ -125,7 +165,7 @@ if data:
     </div>
     """, unsafe_allow_html=True)
 
-    # B. METRICS GRID
+    # METRICS
     m1, m2, m3, m4 = st.columns(4)
     with m1: st.metric("📡 Total Scanning", f"{total_scanned} Feed")
     with m2: st.metric("🎯 Isu Kritis", f"{len(data.get('sources', []))} Item")
@@ -137,7 +177,7 @@ if data:
 
     st.markdown("---")
 
-    # C. ANALISIS & SUMBER
+    # EXECUTIVE SUMMARY & SOURCES
     main, side = st.columns([2, 1])
 
     with main:
@@ -175,35 +215,45 @@ if data:
             for s in sources:
                 with st.expander(f"📰 {s.get('title')[:40]}...", expanded=True):
                     st.caption(s.get('title'))
-                    # Link tanpa icon aneh-aneh
                     st.markdown(f"[Buka Artikel Asli]({s.get('url')})")
         else:
             st.caption("Tidak ada berita spesifik.")
 
-    # D. BIG DATA RAW FEED (TABEL SEMPURNA)
+    # --- D. BIG DATA RAW FEED (MOBILE RESPONSIVE HTML) ---
     st.markdown("---")
     with st.expander("📂 LIHAT DATA MENTAH (RAW BIG DATA FEED)", expanded=False):
         all_feed = data.get('all_feed', [])
+        
         if all_feed:
-            df = pd.DataFrame(all_feed)
-            if not df.empty and 'title' in df.columns:
+            # Kita bangun tabel HTML manual agar bisa wrap text
+            html_table = """
+            <table class="raw-table">
+                <thead>
+                    <tr>
+                        <th style="width: 15%;">Kategori</th>
+                        <th style="width: 70%;">Judul Berita</th>
+                        <th style="width: 15%;">Link</th>
+                    </tr>
+                </thead>
+                <tbody>
+            """
+            
+            for item in all_feed:
+                # Bersihkan label dari kurung siku
+                label = item.get('type', '').replace('[','').replace(']','')
+                title = item.get('title', '-')
+                url = item.get('url', '#')
                 
-                # Ubah kolom URL jadi display text "Lihat"
-                df['url_display'] = df['url'] 
-                
-                st.dataframe(
-                    df[['type', 'title', 'url_display']], 
-                    column_config={
-                        "type": st.column_config.TextColumn("Kategori", width="small"),
-                        "title": st.column_config.TextColumn("Judul Berita", width="large"), # Judul Lebar
-                        "url_display": st.column_config.LinkColumn(
-                            "Akses", 
-                            display_text="Lihat", # Teks Link jadi 'Lihat'
-                            width="small"
-                        ),
-                    },
-                    use_container_width=True,
-                    hide_index=True
-                )
+                html_table += f"""
+                <tr>
+                    <td><span class="badge">{label}</span></td>
+                    <td class="wrap-text">{title}</td>
+                    <td><a href="{url}" target="_blank" class="link-btn">Lihat</a></td>
+                </tr>
+                """
+            
+            html_table += "</tbody></table>"
+            st.markdown(html_table, unsafe_allow_html=True)
+            
         else:
             st.write("Data mentah tidak tersedia.")
