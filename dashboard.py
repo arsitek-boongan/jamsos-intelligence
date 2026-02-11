@@ -11,10 +11,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 🔴 URL WORKER (Pastikan tidak ada slash di akhir)
+# 🔴 URL WORKER
 WORKER_URL = "https://jamsos-brain.arsitek-boongan.workers.dev"
 
-# --- 2. CSS MODERN (Dark & Clean) ---
+# --- 2. CSS MODERN ---
 st.markdown("""
 <style>
     .block-container { padding-top: 2rem; padding-bottom: 5rem; }
@@ -36,95 +36,82 @@ st.markdown("""
     .sub-stat { font-size: 1.1rem; opacity: 0.95; font-weight: 600; letter-spacing: 1px; }
     .meta-text { font-size: 0.85rem; opacity: 0.8; text-transform: uppercase; margin-top: 5px; }
     
-    /* Card Style */
-    .stCard {
-        background-color: #1E1E1E;
-        border: 1px solid #333;
-        padding: 15px;
-        border-radius: 8px;
-    }
-    
-    /* Metric Style override */
-    [data-testid="stMetricValue"] { font-size: 1.8rem !important; }
+    /* Card & Button Override */
+    .stButton button { width: 100%; border-radius: 5px; }
 </style>
 """, unsafe_allow_html=True)
 
 # --- 3. LOGIC SMART FETCH ---
+def get_wib_time():
+    # Hitung waktu sekarang dalam WIB (UTC + 7)
+    return (datetime.utcnow() + timedelta(hours=7)).strftime("%d %b %Y, %H:%M WIB")
+
 def fetch_data(force_reset=False):
-    """
-    Mengambil data dari Worker.
-    force_reset=True akan mengirim ?reset=true untuk memaksa AI mikir ulang.
-    """
     url = WORKER_URL
     if force_reset:
         url += "/?reset=true"
         
     try:
-        # Timeout agak lama karena AI mikir keras (V26)
         r = requests.get(url, timeout=45) 
         data = r.json()
-        
         if "error" in data:
             return None, data["message"]
-            
         return data, None
     except Exception as e:
         return None, str(e)
 
-# --- 4. MAIN LAYOUT ---
+# --- 4. MAIN LAYOUT & CONTROL ---
 
-# Header & Control
-c1, c2 = st.columns([5, 1])
-with c1:
-    st.title("Manpower Intel")
-    st.caption("Sistem Pemantauan Stabilitas Ketenagakerjaan Berbasis AI & Big Data")
+st.title("Manpower Intel")
+st.caption("Sistem Pemantauan Stabilitas Ketenagakerjaan Berbasis AI & Big Data")
 
-with c2:
-    # Tombol Hard Reset
-    if st.button("🔄 SCAN ULANG", type="primary", use_container_width=True):
-        with st.spinner("Memaksa Satelit Scan Ulang (30-60 detik)..."):
-            fresh_data, err = fetch_data(force_reset=True)
-            if fresh_data:
-                st.session_state["intel_data"] = fresh_data
-                st.rerun()
-            else:
-                st.error(f"Gagal Scan: {err}")
+# TOMBOL REFRESH (Posisi di bawah Judul)
+if st.button("Refresh"):
+    with st.spinner("Memperbarui Data Intelijen..."):
+        fresh_data, err = fetch_data(force_reset=True)
+        if fresh_data:
+            st.session_state["intel_data"] = fresh_data
+            st.session_state["last_update_wib"] = get_wib_time() # Update Jam
+            st.rerun()
+        else:
+            st.error(f"Gagal Refresh: {err}")
 
-# Load Data (Cache Session)
+# Load Data Awal (Jika belum ada di session)
 if "intel_data" not in st.session_state:
     with st.spinner("Menghubungkan ke Brain V26..."):
         data, err = fetch_data()
         if data:
             st.session_state["intel_data"] = data
+            st.session_state["last_update_wib"] = get_wib_time() # Set Jam Awal
         else:
             st.error(f"Koneksi Gagal: {err}")
             st.stop()
-else:
-    data = st.session_state["intel_data"]
+
+# Ambil data dari Session State
+data = st.session_state["intel_data"]
+last_update = st.session_state.get("last_update_wib", "-")
 
 # --- 5. VISUALISASI DATA ---
 
 if data:
-    # Parsing Data Utama
     status = data.get('social_stability_index', 'UNKNOWN')
-    tanggal = data.get('tanggal', '-')
-    total_scanned = data.get('total_scanned', 0) # Fitur V26
+    total_scanned = data.get('total_scanned', 0)
     
     # Warna Status
     if status == "HIJAU":
-        bg_color = "#10B981" # Green
+        bg_color = "#10B981"
         msg = "KONDUSIF"
         icon = "✅"
     elif status == "KUNING":
-        bg_color = "#F59E0B" # Amber
+        bg_color = "#F59E0B"
         msg = "WASPADA / ESKALASI"
         icon = "⚠️"
     else:
-        bg_color = "#EF4444" # Red
+        bg_color = "#EF4444"
         msg = "BAHAYA / KRISIS"
         icon = "🚨"
 
-    # A. STATUS BANNER
+    # A. STATUS BANNER (DENGAN JAM WIB)
     st.markdown(f"""
     <div class="status-box" style="background-color: {bg_color};">
         <div>
@@ -135,15 +122,15 @@ if data:
         <div style="text-align: right;">
             <div class="big-stat">{total_scanned}</div>
             <div class="sub-stat">Sinyal Terdeteksi</div>
-            <div class="meta-text">Last Update: {tanggal}</div>
+            <div class="meta-text">Last Update: {last_update}</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
     # B. METRICS GRID
     m1, m2, m3, m4 = st.columns(4)
-    with m1: st.metric("📡 Total Scanning", f"{total_scanned} Feed", help="Total berita mentah yang dibaca sistem hari ini.")
-    with m2: st.metric("🎯 Isu Kritis", f"{len(data.get('sources', []))} Item", help="Jumlah isu yang lolos filter AI.")
+    with m1: st.metric("📡 Total Scanning", f"{total_scanned} Feed")
+    with m2: st.metric("🎯 Isu Kritis", f"{len(data.get('sources', []))} Item")
     with m3: 
         reg_count = data.get('technical_audit', {}).get('regulations_matched', '0')
         has_reg = "Ada" if "Sesuai" in str(reg_count) else "Umum"
@@ -156,14 +143,13 @@ if data:
     main, side = st.columns([2, 1])
 
     with main:
-        st.subheader("📑 Executive Summary (Deep Analysis)")
+        st.subheader("📑 Executive Summary")
         exec_sum = data.get('executive_summary', '-')
         if "Auto-Source" in exec_sum:
-            st.warning("⚠️ Catatan: Analisis menggunakan mode otomatis karena AI tidak memilih spesifik.")
+            st.warning("⚠️ Mode Otomatis: AI tidak merinci sumber spesifik.")
         st.info(exec_sum)
         
-        # Tab Analisis
-        tab1, tab2, tab3 = st.tabs(["🧠 Strategis", "⚖️ Audit Hukum (Evidence)", "🔥 Dampak Politik"])
+        tab1, tab2, tab3 = st.tabs(["🧠 Strategis", "⚖️ Audit Hukum", "🔥 Politik"])
         
         with tab1:
             strat = data.get('strategic_analysis', {})
@@ -171,23 +157,20 @@ if data:
         
         with tab2:
             audit = data.get('technical_audit', {})
-            st.markdown("#### 📜 Pencocokan Regulasi (Database User)")
-            # Fitur V25/V26: Regulations Matched
             reg_match = audit.get('regulations_matched', 'Tidak ada data')
-            if "Tidak ditemukan" in reg_match:
+            if "Tidak ditemukan" in reg_match or "Gagal" in reg_match:
                 st.error(reg_match)
             else:
                 st.success(reg_match)
-                
-            st.markdown("#### ⚠️ Celah Kepatuhan (Compliance Gap)")
-            st.write(audit.get('compliance_gap', audit.get('operational_risks', '-')))
+            st.markdown("**Compliance Gap:**")
+            st.write(audit.get('compliance_gap', '-'))
 
         with tab3:
              strat = data.get('strategic_analysis', {})
              st.write(strat.get('political_impact', '-'))
 
     with side:
-        st.subheader(f"🔗 {len(data.get('sources', []))} Sumber Terpilih")
+        st.subheader(f"🔗 {len(data.get('sources', []))} Sumber")
         sources = data.get('sources', [])
         
         if sources:
@@ -196,27 +179,24 @@ if data:
                     st.caption(s.get('title'))
                     st.markdown(f"[Buka Artikel Asli ↗️]({s.get('url')})")
         else:
-            st.caption("Tidak ada berita spesifik terpilih.")
+            st.caption("Tidak ada berita spesifik.")
 
-    # D. BIG DATA RAW FEED (Fitur V26)
+    # D. BIG DATA RAW FEED
     st.markdown("---")
     with st.expander("📂 LIHAT DATA MENTAH (RAW BIG DATA FEED)", expanded=False):
-        st.caption("Ini adalah seluruh data yang masuk ke mesin penggilingan AI sebelum disaring.")
-        
         all_feed = data.get('all_feed', [])
         if all_feed:
-            # Buat DataFrame agar rapi
             df = pd.DataFrame(all_feed)
             if not df.empty and 'title' in df.columns:
                 st.dataframe(
                     df[['type', 'title', 'url']], 
                     column_config={
-                        "url": st.column_config.LinkColumn("Link Asli"),
-                        "type": "Kategori",
-                        "title": "Judul Berita"
+                        "url": st.column_config.LinkColumn("Link"),
+                        "type": "Label",
+                        "title": "Judul"
                     },
                     use_container_width=True,
                     hide_index=True
                 )
         else:
-            st.write("Data mentah tidak disertakan dalam respon ini.")
+            st.write("Data mentah tidak tersedia.")
