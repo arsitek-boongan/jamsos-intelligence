@@ -80,7 +80,7 @@ if st.button("Refresh"):
 
 # Load Data Awal
 if "intel_data" not in st.session_state:
-    with st.spinner("Membangun Koneksi ke Brain V26..."):
+    with st.spinner("Membangun Koneksi ke Brain V36..."):
         data, err = fetch_data()
         if data:
             st.session_state["intel_data"] = data
@@ -138,7 +138,7 @@ if data:
         reg_match = audit.get('regulations_involved', audit.get('regulations_matched', ''))
         has_reg = "Ada" if "Sesuai" in str(reg_match) else "Umum"
         st.metric("⚖️ Basis Hukum", has_reg)
-    with m4: st.metric("🤖 AI Engine", "Hybrid V26")
+    with m4: st.metric("🤖 AI Engine", "Hybrid V36")
 
     st.markdown("---")
 
